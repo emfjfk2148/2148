@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이가네 펜션 목록 시스템</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-600 text-white p-2 rounded-xl shadow-md">
+                        <i data-lucide="home" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900 tracking-tight">이가네 펜션 목록</h1>
+                        <p class="text-xs text-slate-500 hidden sm:block">맞춤형 펜션 정보 및 수시 관리 시스템</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden md:flex space-x-1 items-center">
+                    <button onclick="switchTab('list')" id="nav-list" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-brand-50 text-brand-700">
+                        <i data-lucide="list" class="w-4 h-4"></i> 펜션 목록
+                    </button>
+                    <button onclick="switchTab('add')" id="nav-add" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> 펜션 추가
+                    </button>
+                    <button onclick="switchTab('manage')" id="nav-manage" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                        <i data-lucide="database" class="w-4 h-4"></i> 데이터 관리
+                    </button>
+                </nav>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-btn" class="p-2 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-3 space-y-1">
+            <button onclick="switchTab('list'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-2 text-slate-700 hover:bg-slate-100">
+                <i data-lucide="list" class="w-5 h-5"></i> 펜션 목록
+            </button>
+            <button onclick="switchTab('add'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-2 text-slate-700 hover:bg-slate-100">
+                <i data-lucide="plus-circle" class="w-5 h-5"></i> 펜션 추가
+            </button>
+            <button onclick="switchTab('manage'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-2 text-slate-700 hover:bg-slate-100">
+                <i data-lucide="database" class="w-5 h-5"></i> 데이터 관리
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Notification Banner -->
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+        <!-- SECTION 1: Pension List & Directory -->
+        <section id="section-list" class="space-y-6">
+            <!-- Filter Bar -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+                <!-- Search Box -->
+                <div class="relative flex-grow max-w-md">
+                    <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="renderPensions()" placeholder="펜션 이름, 주소, 메모로 검색..." 
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white text-sm">
+                </div>
+
+                <!-- Filters & Controls -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <!-- Region Filter -->
+                    <select id="filter-region" onchange="renderPensions()" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="all">모든 지역 전체</option>
+                        <!-- Regions added dynamically -->
+                    </select>
+
+                    <!-- Sorting -->
+                    <select id="filter-sort" onchange="renderPensions()" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="name-asc">이름순 (가나다)</option>
+                        <option value="rating-desc">평점 높은순</option>
+                        <option value="rating-asc">평점 낮은순</option>
+                        <option value="recent">최근 등록순</option>
+                    </select>
+
+                    <!-- View Toggle Button -->
+                    <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+                        <button id="view-card-btn" onclick="setViewMode('card')" class="p-1.5 rounded-lg text-slate-700 bg-white shadow-xs">
+                            <i data-lucide="grid" class="w-4 h-4"></i>
+                        </button>
+                        <button id="view-table-btn" onclick="setViewMode('table')" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700">
+                            <i data-lucide="table" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Badge Bar -->
+            <div class="flex items-center justify-between text-sm text-slate-500 px-1">
+                <span>총 <strong id="total-count" class="text-brand-600 font-bold">0</strong>개의 펜션이 등록되어 있습니다.</span>
+                <span id="active-filter-badge" class="hidden bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-medium"></span>
+            </div>
+
+            <!-- 입/퇴실 시간 모아보기 요약 대시보드 -->
+            <div class="bg-gradient-to-r from-emerald-900 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-800">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400">
+                        <i data-lucide="clock" class="w-4 h-4"></i> 입 / 퇴실 시간 현황 요약
+                    </h3>
+                    <span class="text-[11px] text-slate-300 bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-700/50">한눈에 비교하기</span>
+                </div>
+                <div id="time-summary-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <!-- Dynamic summary badges -->
+                </div>
+            </div>
+
+            <!-- Card View Container -->
+            <div id="pension-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Pension cards will be rendered dynamically -->
+            </div>
+
+            <!-- Table View Container -->
+            <div id="pension-table-container" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase text-xs">
+                            <tr>
+                                <th class="py-3.5 px-4">지역</th>
+                                <th class="py-3.5 px-4">펜션명</th>
+                                <th class="py-3.5 px-4">주소 / 전화번호</th>
+                                <th class="py-3.5 px-4">인원</th>
+                                <th class="py-3.5 px-4">가격</th>
+                                <th class="py-3.5 px-4">평점</th>
+                                <th class="py-3.5 px-4">입/퇴실</th>
+                                <th class="py-3.5 px-4 text-center">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pension-table-body" class="divide-y divide-slate-100">
+                            <!-- Table rows dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden bg-white rounded-2xl p-12 text-center border border-slate-200">
+                <i data-lucide="ghost" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                <h3 class="text-lg font-semibold text-slate-700">검색 결과가 없습니다</h3>
+                <p class="text-slate-500 text-sm mt-1">다른 검색어나 필터 조건으로 다시 검색해 보세요.</p>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Add/Edit Pension Form -->
+        <section id="section-add" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-900 text-white p-6">
+                    <h2 id="form-title" class="text-xl font-bold flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-brand-500"></i> 신규 펜션 등록
+                    </h2>
+                    <p id="form-subtitle" class="text-xs text-slate-400 mt-1">새로운 펜션 정보를 입력하여 데이터베이스에 바로 저장할 수 있습니다.</p>
+                </div>
+
+                <form id="pension-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-5">
+                    <input type="hidden" id="edit-id" value="">
+
+                    <!-- Region & Pension Name -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">지역 <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-region" required placeholder="예: 창원, 거제, 고성" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">펜션 이름 <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-name" required placeholder="예: 시락 그늘집민박" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Address & Phone Number -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">도로명/지번 주소</label>
+                            <input type="text" id="input-address" placeholder="예: 경남 창원시 마산합포구..." 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">전화번호</label>
+                            <input type="text" id="input-phone" placeholder="예: 010-1234-5678" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Capacity, Price & Rating -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">수용 인원 (기준/최대)</label>
+                            <input type="text" id="input-capacity" placeholder="예: 4(6) 또는 6명" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">가격 정보</label>
+                            <input type="text" id="input-price" placeholder="예: 18만원 / 20~30만원" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">평점 (0.0 ~ 5.0)</label>
+                            <input type="text" id="input-rating" placeholder="예: 4.5" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Check-in & Check-out -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">입실 시간 (Check-in)</label>
+                            <input type="text" id="input-checkin" placeholder="예: 15:00" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">퇴실 시간 (Check-out)</label>
+                            <input type="text" id="input-checkout" placeholder="예: 11:00" 
+                                   class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Memo & Notes -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">비고 / 메모 (특징, 특이사항 등)</label>
+                        <textarea id="input-memo" rows="3" placeholder="예: 풀빌라, 섬 내 위치, 바베큐장 완비 등 특이사항 작성" 
+                                  class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Actions Buttons -->
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                        <button type="button" onclick="cancelForm()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                            취소
+                        </button>
+                        <button type="submit" class="px-5 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md transition flex items-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> <span id="submit-btn-text">저장하기</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Data Management & Backup -->
+        <section id="section-manage" class="hidden max-w-4xl mx-auto space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+                    <i data-lucide="database" class="w-5 h-5 text-brand-600"></i> 데이터 관리 및 백업
+                </h2>
+                <p class="text-slate-500 text-sm mb-6">등록된 펜션 목록을 백업하거나 초기 엑셀 데이터 상태로 되돌릴 수 있습니다.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Export JSON -->
+                    <div class="border border-slate-200 p-4 rounded-xl bg-slate-50 hover:border-brand-300 transition">
+                        <i data-lucide="download" class="w-6 h-6 text-brand-600 mb-2"></i>
+                        <h3 class="font-semibold text-slate-800 text-sm">JSON 백업 다운로드</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">현재 저장된 전체 펜션 데이터를 JSON 파일로 다운로드합니다.</p>
+                        <button onclick="exportDataJSON()" class="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-medium transition">
+                            JSON 다운로드
+                        </button>
+                    </div>
+
+                    <!-- Export CSV -->
+                    <div class="border border-slate-200 p-4 rounded-xl bg-slate-50 hover:border-brand-300 transition">
+                        <i data-lucide="file-spreadsheet" class="w-6 h-6 text-blue-600 mb-2"></i>
+                        <h3 class="font-semibold text-slate-800 text-sm">CSV (엑셀) 내보내기</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">엑셀 프로그램에서 불러올 수 있는 CSV 파일 형태로 추출합니다.</p>
+                        <button onclick="exportDataCSV()" class="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-medium transition">
+                            CSV 다운로드
+                        </button>
+                    </div>
+
+                    <!-- Reset Initial Data -->
+                    <div class="border border-red-200 p-4 rounded-xl bg-red-50/50 hover:border-red-300 transition">
+                        <i data-lucide="rotate-ccw" class="w-6 h-6 text-red-600 mb-2"></i>
+                        <h3 class="font-semibold text-slate-800 text-sm">초기 엑셀 데이터 복원</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">사용자가 추가/수정한 내용을 지우고 처음 제공된 데이터로 초기화합니다.</p>
+                        <button onclick="resetToInitialData()" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition">
+                            초기화 실행
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- App JavaScript Logic -->
+    <script>
+        // Default Pensions initial data extracted from the prompt Excel
+        const INITIAL_PENSIONS = [
+            { id: "1", region: "고성", name: "느티나무요정들펜션", address: "경남 고성군 하이면 덕명4길 58", phone: "010-5051-7477", rating: "4.5", capacity: "2(6)", price: "18만원", checkin: "15:00", checkout: "11:00", memo: "" },
+            { id: "2", region: "창원", name: "사궁두미479", address: "경남 창원시 마산합포구 덕동동 479", phone: "010-2707-0831", rating: "4.8", capacity: "6(8)", price: "25만원", checkin: "14:30", checkout: "11:00", memo: "" },
+            { id: "3", region: "창원", name: "더채운하우스", address: "경남 창원시 마산합포구 진전면 회진로 862", phone: "010-9264-7804", rating: "4.2", capacity: "-", price: "-", checkin: "13:30", checkout: "11:00", memo: "" },
+            { id: "4", region: "통영", name: "곤리도 도감민박", address: "경남 통영시 산양읍 곤리길 (곤리도 섬 내)", phone: "010-2800-1201", rating: "4.0", capacity: "-", price: "-", checkin: "-", checkout: "-", memo: "곤리도 섬 내" },
+            { id: "5", region: "창원", name: "시락 그늘집민박", address: "경남 창원시 마산합포구 진전면 회진로 973", phone: "0507-1357-4144", rating: "4.3", capacity: "4(6)", price: "18만원", checkin: "15:00", checkout: "11:00", memo: "" },
+            { id: "6", region: "함안", name: "함안보풍차펜션", address: "경남 함안군 칠북면 봉촌2길 98", phone: "010-8996-4299", rating: "4.6", capacity: "10(15)", price: "25~40만원", checkin: "14:00", checkout: "11:00", memo: "" },
+            { id: "7", region: "고성", name: "대밭펜션", address: "경남 고성군 동해면 내곡리 238-2", phone: "010-4022-5747", rating: "4.4", capacity: "5(10)", price: "19만원", checkin: "15:00", checkout: "11:00", memo: "" },
+            { id: "8", region: "통영", name: "창포해피랑", address: "경남 통영시 도산면 창포리", phone: "010-2022-3403", rating: "4.1", capacity: "12명", price: "-", checkin: "15:00", checkout: "11:00", memo: "" },
+            { id: "9", region: "고성", name: "고개너머펜션", address: "경남 고성군", phone: "-", rating: "-", capacity: "-", price: "-", checkin: "-", checkout: "-", memo: "" },
+            { id: "10", region: "거제", name: "내도 모해펜션", address: "경남 거제시 일운면 내도길", phone: "010-5752-6690", rating: "4.7", capacity: "4(6)", price: "-", checkin: "15:00", checkout: "11:00", memo: "내도" },
+            { id: "11", region: "거제", name: "칠천도와라펜션", address: "경남 거제시 하청면 대곡리 46-3", phone: "010-4482-2284", rating: "4.5", capacity: "8(10)", price: "20~30만원", checkin: "14:00", checkout: "11:00", memo: "" },
+            { id: "12", region: "함안", name: "란트하우스", address: "경남 함안군 군북면 영운2길 105-1", phone: "055-585-2081", rating: "4.6", capacity: "-", price: "-", checkin: "-", checkout: "-", memo: "풀빌라, 나무집" },
+            { id: "13", region: "함안", name: "느루", address: "경남 함안군 칠원읍 운곡리 241", phone: "0507-1406-4643", rating: "4.9", capacity: "6(12)", price: "50만원", checkin: "15:00", checkout: "11:00", memo: "풀빌라" },
+            { id: "14", region: "창원", name: "진동미소", address: "경남 창원시 마산합포구 진동면 교동3길 317-74", phone: "0507-1433-7750", rating: "4.8", capacity: "4(10)", price: "46만원", checkin: "15:00", checkout: "11:00", memo: "" }
+        ];
+
+        // State Variables
+        let pensions = [];
+        let viewMode = 'card'; // 'card' or 'table'
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPensions();
+            updateRegionDropdown();
+            renderPensions();
+            lucide.createIcons();
+            
+            // Mobile Menu Toggle Event
+            document.getElementById('mobile-menu-btn').addEventListener('click', toggleMobileMenu);
+        });
+
+        // Local Storage Functions
+        function loadPensions() {
+            const stored = localStorage.getItem('pensions_data');
+            if (stored) {
+                try {
+                    pensions = JSON.parse(stored);
+                } catch (e) {
+                    console.error("Failed to parse stored pensions data", e);
+                    pensions = [...INITIAL_PENSIONS];
+                }
+            } else {
+                pensions = [...INITIAL_PENSIONS];
+                savePensions();
+            }
+        }
+
+        function savePensions() {
+            localStorage.setItem('pensions_data', JSON.stringify(pensions));
+        }
+
+        // Navigation Switcher
+        function switchTab(tabName) {
+            // Update Active Buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-50', 'text-brand-700');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+            });
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-brand-50', 'text-brand-700');
+                activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+            }
+
+            // Hide Sections
+            document.getElementById('section-list').classList.add('hidden');
+            document.getElementById('section-add').classList.add('hidden');
+            document.getElementById('section-manage').classList.add('hidden');
+
+            // Show Selected Section
+            document.getElementById(`section-${tabName}`).classList.remove('hidden');
+
+            // Refresh icons inside visible tabs
+            lucide.createIcons();
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Update Region Dynamic Filter Options
+        function updateRegionDropdown() {
+            const select = document.getElementById('filter-region');
+            const currentVal = select.value;
+
+            // Extract unique regions
+            const regions = Array.from(new Set(pensions.map(p => p.region).filter(Boolean)));
+            
+            select.innerHTML = `<option value="all">모든 지역 전체 (${pensions.length})</option>`;
+            regions.forEach(region => {
+                const count = pensions.filter(p => p.region === region).length;
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = `${region} (${count})`;
+                select.appendChild(option);
+            });
+
+            select.value = currentVal;
+        }
+
+        // View Mode Switcher
+        function setViewMode(mode) {
+            viewMode = mode;
+            const cardBtn = document.getElementById('view-card-btn');
+            const tableBtn = document.getElementById('view-table-btn');
+
+            if (mode === 'card') {
+                cardBtn.classList.add('bg-white', 'text-slate-700', 'shadow-xs');
+                tableBtn.classList.remove('bg-white', 'text-slate-700', 'shadow-xs');
+                tableBtn.classList.add('text-slate-500');
+            } else {
+                tableBtn.classList.add('bg-white', 'text-slate-700', 'shadow-xs');
+                cardBtn.classList.remove('bg-white', 'text-slate-700', 'shadow-xs');
+                cardBtn.classList.add('text-slate-500');
+            }
+            renderPensions();
+        }
+
+        // Render List Logic (Filter & Sort)
+        function renderPensions() {
+            const searchKeyword = document.getElementById('search-input').value.toLowerCase().trim();
+            const selectedRegion = document.getElementById('filter-region').value;
+            const sortMode = document.getElementById('filter-sort').value;
+
+            // Filter logic
+            let filtered = pensions.filter(item => {
+                const matchesSearch = 
+                    item.name.toLowerCase().includes(searchKeyword) ||
+                    item.address.toLowerCase().includes(searchKeyword) ||
+                    (item.memo && item.memo.toLowerCase().includes(searchKeyword)) ||
+                    item.region.toLowerCase().includes(searchKeyword);
+                
+                const matchesRegion = (selectedRegion === 'all' || item.region === selectedRegion);
+
+                return matchesSearch && matchesRegion;
+            });
+
+            // Sorting logic
+            filtered.sort((a, b) => {
+                if (sortMode === 'name-asc') {
+                    return a.name.localeCompare(b.name, 'ko');
+                } else if (sortMode === 'rating-desc') {
+                    const rA = parseFloat(a.rating) || 0;
+                    const rB = parseFloat(b.rating) || 0;
+                    return rB - rA;
+                } else if (sortMode === 'rating-asc') {
+                    const rA = parseFloat(a.rating) || 0;
+                    const rB = parseFloat(b.rating) || 0;
+                    return rA - rB;
+                } else if (sortMode === 'recent') {
+                    return b.id - a.id;
+                }
+                return 0;
+            });
+
+            // Update Count
+            document.getElementById('total-count').textContent = filtered.length;
+
+            // Render 입/퇴실 시간 요약 뱃지
+            renderTimeSummary(filtered);
+
+            const cardContainer = document.getElementById('pension-cards-container');
+            const tableContainer = document.getElementById('pension-table-container');
+            const tableBody = document.getElementById('pension-table-body');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filtered.length === 0) {
+                cardContainer.classList.add('hidden');
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            if (viewMode === 'card') {
+                cardContainer.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                
+                cardContainer.innerHTML = filtered.map(item => `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col">
+                        <!-- Card Header -->
+                        <div class="p-5 border-b border-slate-100 pb-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-100 mb-1">
+                                        ${escapeHtml(item.region)}
+                                    </span>
+                                    <h3 class="text-lg font-bold text-slate-900 transition">
+                                        ${escapeHtml(item.name)}
+                                    </h3>
+                                </div>
+                                <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                                    <i data-lucide="star" class="w-4 h-4 fill-amber-400 text-amber-400"></i>
+                                    <span class="text-xs font-bold text-amber-700">${item.rating && item.rating !== '-' ? item.rating : '평점없음'}</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                                <span class="truncate" title="${escapeHtml(item.address)}">${escapeHtml(item.address || '주소 정보 없음')}</span>
+                                ${item.address && item.address !== '-' ? `
+                                <button onclick="copyToClipboard('${escapeHtml(item.address)}')" class="text-slate-400 hover:text-slate-600 ml-1 p-0.5" title="주소 복사">
+                                    <i data-lucide="copy" class="w-3 h-3"></i>
+                                </button>
+                                ` : ''}
+                            </p>
+                        </div>
+
+                        <!-- Card Body (Details) -->
+                        <div class="p-5 space-y-3 flex-grow text-xs text-slate-600">
+                            <!-- 입/퇴실 시간 독립 강조 박스 -->
+                            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 p-3 rounded-xl flex items-center justify-between text-slate-800 shadow-xs">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-emerald-700 font-bold tracking-tight uppercase block">입실 (Check-in)</span>
+                                        <span class="text-xs font-extrabold text-slate-900">${escapeHtml(item.checkin || '-')}</span>
+                                    </div>
+                                </div>
+                                <div class="h-6 w-px bg-emerald-200"></div>
+                                <div class="flex items-center gap-2 text-right">
+                                    <div>
+                                        <span class="text-[10px] text-slate-500 font-bold tracking-tight uppercase block">퇴실 (Check-out)</span>
+                                        <span class="text-xs font-extrabold text-slate-900">${escapeHtml(item.checkout || '-')}</span>
+                                    </div>
+                                    <div class="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+                                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl">
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">인원</span>
+                                    <span class="font-medium text-slate-800">${escapeHtml(item.capacity || '-')}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[11px]">가격</span>
+                                    <span class="font-medium text-slate-800">${escapeHtml(item.price || '-')}</span>
+                                </div>
+                            </div>
+
+                            ${item.memo ? `
+                                <div class="bg-amber-50/60 text-amber-900 border border-amber-200/50 p-2.5 rounded-xl text-xs flex items-start gap-1.5">
+                                    <i data-lucide="info" class="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5"></i>
+                                    <span>${escapeHtml(item.memo)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Card Footer / Actions -->
+                        <div class="px-5 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2">
+                            ${item.phone && item.phone !== '-' ? `
+                                <a href="tel:${item.phone}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg text-xs font-semibold transition border border-brand-200">
+                                    <i data-lucide="phone" class="w-3.5 h-3.5"></i> ${escapeHtml(item.phone)}
+                                </a>
+                            ` : `<span class="text-slate-400 text-xs">연락처 미등록</span>`}
+
+                            <div class="flex items-center gap-1">
+                                <button onclick="editPension('${item.id}')" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition" title="수정">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deletePension('${item.id}')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="삭제">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                cardContainer.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+
+                tableBody.innerHTML = filtered.map(item => `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3 px-4 font-medium text-slate-900">
+                            <span class="px-2 py-0.5 rounded-md text-xs bg-slate-100 text-slate-700">${escapeHtml(item.region)}</span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-slate-900">${escapeHtml(item.name)}</td>
+                        <td class="py-3 px-4">
+                            <div class="text-xs text-slate-800">${escapeHtml(item.address || '-')}</div>
+                            <div class="text-xs text-slate-400">${item.phone !== '-' ? `<a href="tel:${item.phone}" class="hover:underline text-brand-600">${escapeHtml(item.phone)}</a>` : '-'}</div>
+                        </td>
+                        <td class="py-3 px-4 text-xs">${escapeHtml(item.capacity || '-')}</td>
+                        <td class="py-3 px-4 text-xs font-semibold text-slate-700">${escapeHtml(item.price || '-')}</td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                                <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400 text-amber-400"></i>
+                                ${item.rating || '-'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold">
+                                <span>입실 ${escapeHtml(item.checkin || '-')}</span>
+                                <span class="text-emerald-300">|</span>
+                                <span class="text-slate-600 font-medium">퇴실 ${escapeHtml(item.checkout || '-')}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <button onclick="editPension('${item.id}')" class="p-1 text-slate-500 hover:text-slate-900" title="수정">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deletePension('${item.id}')" class="p-1 text-slate-400 hover:text-red-600" title="삭제">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            lucide.createIcons();
+        }
+
+        // 입/퇴실 시간 통계 요약 렌더링 함수
+        function renderTimeSummary(list) {
+            const container = document.getElementById('time-summary-container');
+            if (!container) return;
+
+            // 입실 시간대별 그룹핑
+            const checkinCounts = {};
+            list.forEach(p => {
+                const key = p.checkin && p.checkin !== '-' ? p.checkin : '시간 미지정';
+                checkinCounts[key] = (checkinCounts[key] || 0) + 1;
+            });
+
+            container.innerHTML = Object.entries(checkinCounts).map(([time, count]) => `
+                <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-emerald-400 font-semibold block">입실 ${time}</span>
+                        <span class="text-sm font-extrabold text-white">${count}곳</span>
+                    </div>
+                    <div class="w-2 h-2 rounded-full ${time === '시간 미지정' ? 'bg-slate-500' : 'bg-emerald-400 animate-pulse'}"></div>
+                </div>
+            `).join('');
+        }
+
+        // Form Submission Logic (Add or Edit)
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('edit-id').value;
+            const region = document.getElementById('input-region').value.trim();
+            const name = document.getElementById('input-name').value.trim();
+            const address = document.getElementById('input-address').value.trim() || '-';
+            const phone = document.getElementById('input-phone').value.trim() || '-';
+            const capacity = document.getElementById('input-capacity').value.trim() || '-';
+            const price = document.getElementById('input-price').value.trim() || '-';
+            const rating = document.getElementById('input-rating').value.trim() || '-';
+            const checkin = document.getElementById('input-checkin').value.trim() || '-';
+            const checkout = document.getElementById('input-checkout').value.trim() || '-';
+            const memo = document.getElementById('input-memo').value.trim();
+
+            if (editId) {
+                // Update Existing
+                const index = pensions.findIndex(p => p.id === editId);
+                if (index !== -1) {
+                    pensions[index] = { id: editId, region, name, address, phone, capacity, price, rating, checkin, checkout, memo };
+                    showToast('펜션 정보가 수정되었습니다.', 'success');
+                }
+            } else {
+                // Add New
+                const newId = Date.now().toString();
+                pensions.unshift({ id: newId, region, name, address, phone, capacity, price, rating, checkin, checkout, memo });
+                showToast('새 펜션이 등록되었습니다.', 'success');
+            }
+
+            savePensions();
+            updateRegionDropdown();
+            cancelForm();
+            switchTab('list');
+            renderPensions();
+        }
+
+        // Edit Pension Handler
+        function editPension(id) {
+            const item = pensions.find(p => p.id === id);
+            if (!item) return;
+
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('input-region').value = item.region || '';
+            document.getElementById('input-name').value = item.name || '';
+            document.getElementById('input-address').value = item.address !== '-' ? item.address : '';
+            document.getElementById('input-phone').value = item.phone !== '-' ? item.phone : '';
+            document.getElementById('input-capacity').value = item.capacity !== '-' ? item.capacity : '';
+            document.getElementById('input-price').value = item.price !== '-' ? item.price : '';
+            document.getElementById('input-rating').value = item.rating !== '-' ? item.rating : '';
+            document.getElementById('input-checkin').value = item.checkin !== '-' ? item.checkin : '';
+            document.getElementById('input-checkout').value = item.checkout !== '-' ? item.checkout : '';
+            document.getElementById('input-memo').value = item.memo || '';
+
+            document.getElementById('form-title').innerHTML = `<i data-lucide="pencil" class="w-5 h-5 text-brand-500"></i> 펜션 정보 수정`;
+            document.getElementById('form-subtitle').textContent = `'${item.name}' 펜션 정보를 수정 중입니다.`;
+            document.getElementById('submit-btn-text').textContent = "수정사항 저장";
+
+            switchTab('add');
+        }
+
+        // Cancel Form & Reset Form Fields
+        function cancelForm() {
+            document.getElementById('pension-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-brand-500"></i> 신규 펜션 등록`;
+            document.getElementById('form-subtitle').textContent = '새로운 펜션 정보를 입력하여 데이터베이스에 바로 저장할 수 있습니다.';
+            document.getElementById('submit-btn-text').textContent = "저장하기";
+            
+            // 처음 화면(목록 탭)으로 이동
+            switchTab('list');
+        }
+
+        // Delete Pension Handler
+        function deletePension(id) {
+            const item = pensions.find(p => p.id === id);
+            if (!item) return;
+
+            if (confirm(`'${item.name}' 펜션을 목록에서 삭제하시겠습니까?`)) {
+                pensions = pensions.filter(p => p.id !== id);
+                savePensions();
+                updateRegionDropdown();
+                renderPensions();
+                showToast('펜션이 삭제되었습니다.', 'info');
+            }
+        }
+
+        // Copy Address to Clipboard
+        function copyToClipboard(text) {
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast('주소가 클립보드에 복사되었습니다.', 'info');
+        }
+
+        // Toast Helper
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-slate-900 text-white' : 'bg-slate-800 text-white';
+            const icon = type === 'success' ? 'check-circle' : 'info';
+
+            toast.className = `${bgColor} px-4 py-3 rounded-xl shadow-lg text-sm flex items-center gap-2 transform transition-all duration-300 opacity-0 translate-y-2`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 text-brand-400"></i> ${escapeHtml(message)}`;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Data Export Options
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pensions, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `pensions_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function exportDataCSV() {
+            let csvContent = "\uFEFF지역,펜션이름,주소,전화번호,평점,수용인원,가격,입실시간,퇴실시간,메모\n";
+            pensions.forEach(p => {
+                const row = [
+                    `"${p.region}"`,
+                    `"${p.name}"`,
+                    `"${p.address}"`,
+                    `"${p.phone}"`,
+                    `"${p.rating}"`,
+                    `"${p.capacity}"`,
+                    `"${p.price}"`,
+                    `"${p.checkin}"`,
+                    `"${p.checkout}"`,
+                    `"${p.memo}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `펜션목록_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        function resetToInitialData() {
+            if (confirm("정말로 초기 엑셀 데이터 상태로 되돌리시겠습니까?\n작성하신 수정 및 추가 데이터가 모두 지워집니다.")) {
+                pensions = [...INITIAL_PENSIONS];
+                savePensions();
+                updateRegionDropdown();
+                renderPensions();
+                showToast('기본 데이터로 초기화되었습니다.', 'success');
+            }
+        }
+
+        // XSS Escape Helper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
