@@ -49,6 +49,22 @@
             background: #94a3b8;
         }
 
+
+        @keyframes pulseHighlight {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55); }
+            50% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+        }
+        .today-highlight {
+            border: 2px solid #16a34a !important;
+            background-color: #f0fdf4 !important;
+            box-shadow: 0 4px 12px -2px rgba(22, 163, 74, 0.25) !important;
+            position: relative;
+            z-index: 10;
+        }
+        .today-pulse {
+            animation: pulseHighlight 1.1s ease-in-out 2;
+        }
+
         @media (max-width: 640px) {
             .calendar-grid {
                 gap: 3px !important;
@@ -930,16 +946,29 @@
 
             const waterMul = getWaterMul(date);
 
+            const today = new Date();
+            const isToday = !isOtherMonth &&
+                date.getFullYear() === today.getFullYear() &&
+                date.getMonth() === today.getMonth() &&
+                date.getDate() === today.getDate();
+
+            const todayClass = isToday ? 'today-highlight' : 'bg-white border-slate-200';
+            const todayBadge = isToday ? `<span class="text-[8px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-brand-600 text-white ml-1">오늘</span>` : '';
+
             return `
-                <div class="day-cell bg-white border border-slate-200 rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 min-h-[75px] sm:min-h-[110px] flex flex-col justify-between transition ${isOtherMonth ? 'opacity-30 bg-slate-50' : ''}"
+                <div ${isToday ? 'id="today-cell"' : ''} class="day-cell border rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 min-h-[75px] sm:min-h-[110px] flex flex-col justify-between transition ${todayClass} ${isOtherMonth ? 'opacity-30 bg-slate-50' : ''}"
                      data-herujil="${isHerujilMatch}" 
                      data-has-low="${tides.some(t => t.type === '간조')}"
                      data-has-high="${tides.some(t => t.type === '만조')}"
-                     data-other="${isOtherMonth}">
+                     data-other="${isOtherMonth}"
+                     data-today="${isToday}">
                     <div>
-                        <div class="flex items-center justify-between">
-                            <div class="day-number text-[11px] sm:text-xs font-bold ${dayColor}">${date.getDate()}일</div>
-                            <span class="text-[9px] sm:text-[10px] font-medium px-1 rounded bg-slate-100 text-slate-500">${waterMul}</span>
+                        <div class="flex items-center justify-between gap-0.5">
+                            <div class="flex items-center flex-wrap">
+                                <span class="day-number text-[11px] sm:text-xs font-bold ${isToday ? 'text-brand-700' : dayColor}">${date.getDate()}일</span>
+                                ${todayBadge}
+                            </div>
+                            <span class="text-[9px] sm:text-[10px] font-medium px-1 rounded ${isToday ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-500'} shrink-0">${waterMul}</span>
                         </div>
                         ${tideHtml}
                     </div>
@@ -955,7 +984,26 @@
 
         function goToday() {
             currentDate = new Date();
-            renderCalendar();
+            const allBtn = document.querySelector('.filter-btn');
+            if (allBtn && currentTideFilter !== 'all') {
+                setTideFilter('all', allBtn);
+            } else {
+                renderCalendar();
+            }
+
+            setTimeout(() => {
+                const todayCell = document.getElementById('today-cell');
+                if (todayCell) {
+                    todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    todayCell.classList.remove('today-pulse');
+                    void todayCell.offsetWidth;
+                    todayCell.classList.add('today-pulse');
+                }
+            }, 50);
+
+            const m = currentDate.getMonth() + 1;
+            const d = currentDate.getDate();
+            showToast(`오늘 날짜(${m}월 ${d}일)로 이동하여 강조했습니다.`);
         }
 
         function setTideFilter(type, btn) {
